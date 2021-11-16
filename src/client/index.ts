@@ -22,24 +22,31 @@ class DrawableCanvas {
     this.ctx.canvas.height = 560;
     this.clear();
 
-    this.draw = this.draw.bind(this);
+    this.mouseDraw = this.mouseDraw.bind(this);
+    this.touchDraw = this.touchDraw.bind(this);
     this.setPosition = this.setPosition.bind(this);
+    this.setTouchPosition = this.setTouchPosition.bind(this);
     this.clear = this.clear.bind(this);
 
-    document.addEventListener('mousemove', this.draw);
+    document.addEventListener('mousemove', this.mouseDraw);
+    document.addEventListener('touchmove', this.touchDraw);
     document.addEventListener('mousedown', this.setPosition);
+    document.addEventListener('touchstart', this.setTouchPosition);
     document.addEventListener('mouseup', () => {
+      this.write(this.pixellate());
+      this.drawCallbacks.forEach(cb => cb());
+    });
+    document.addEventListener('touchEnd', () => {
       this.write(this.pixellate());
       this.drawCallbacks.forEach(cb => cb());
     });
     document.addEventListener('mouseenter', this.setPosition);
   }
 
-  private windowToLocalMousePos(evt: MouseEvent) {
+  private windowToLocalMousePos(evt: {clientX: number, clientY: number}) {
     var rect = this.canvas.getBoundingClientRect(), // abs. size of element
         scaleX = this.canvas.width / rect.width,    // relationship bitmap vs. element for X
         scaleY = this.canvas.height / rect.height;  // relationship bitmap vs. element for Y
-  
     return {
       x: (evt.clientX - rect.left) * scaleX,   // scale mouse coordinates after they have
       y: (evt.clientY - rect.top) * scaleY     // been adjusted to be relative to element
@@ -49,8 +56,14 @@ class DrawableCanvas {
   private setPosition(e: MouseEvent) {
     this.mousePosition = this.windowToLocalMousePos(e);
   }
+  
+  
+  private setTouchPosition(e: TouchEvent) {
+    this.mousePosition = this.windowToLocalMousePos(e.touches[0]);
+  }
     
-  private draw(e: MouseEvent) {
+
+  private mouseDraw(e: MouseEvent) {
     const { ctx } = this;
     // mouse left button must be pressed
     if (e.buttons !== 1) return;
@@ -63,6 +76,23 @@ class DrawableCanvas {
   
     ctx.moveTo(this.mousePosition.x, this.mousePosition.y); // from
     this.setPosition(e);
+    ctx.lineTo(this.mousePosition.x, this.mousePosition.y); // to
+  
+    ctx.stroke(); // draw it!
+    this.drawCallbacks.forEach(cb => cb());
+  }
+
+  private touchDraw(e: TouchEvent) {
+    const { ctx } = this;
+  
+    ctx.beginPath(); // begin
+  
+    ctx.lineWidth = 50;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#ffffff';
+  
+    ctx.moveTo(this.mousePosition.x, this.mousePosition.y); // from
+    this.setTouchPosition(e);
     ctx.lineTo(this.mousePosition.x, this.mousePosition.y); // to
   
     ctx.stroke(); // draw it!
